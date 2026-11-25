@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>제비뽑기 순서와 확률 탐구 시뮬레이터 (중2 수학)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Noto Sans KR & Jua (학생 친화적 둥근 폰트) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <!-- Canvas Confetti for Celebration -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  
+  <style>
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: #f0f4f8;
+      background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    .font-title {
+      font-family: 'Jua', sans-serif;
+    }
+    /* 카드 뒤집기 및 애니메이션 효과 */
+    .ticket-card {
+      transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .ticket-card:hover:not(:disabled) {
+      transform: translateY(-8px) scale(1.03);
+      box-shadow: 0 12px 20px -5px rgba(59, 130, 246, 0.3);
+    }
+    .ticket-card:active:not(:disabled) {
+      transform: scale(0.97);
+    }
+    @keyframes popIn {
+      0% { transform: scale(0.7); opacity: 0; }
+      70% { transform: scale(1.08); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-pop {
+      animation: popIn 0.4s ease-out forwards;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-6px); }
+      40%, 80% { transform: translateX(6px); }
+    }
+    .animate-shake {
+      animation: shake 0.4s ease-in-out;
+    }
+    /* 커스텀 스크롤바 */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 8px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 8px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+  <!-- 상단 헤더 (칠판/에듀테크 스타일) -->
+  <header class="bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 text-white shadow-lg sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="bg-white/20 p-2.5 rounded-2xl backdrop-blur-sm shadow-inner">
+          <span class="text-3xl">🎟️</span>
+        </div>
+        <div>
+          <span class="inline-block bg-amber-400 text-slate-900 text-xs font-extrabold px-2.5 py-0.5 rounded-full mb-1 tracking-wide">
+            중학교 2학년 수학 · 경우의 수와 확률
+          </span>
+          <h1 class="font-title text-2xl sm:text-3xl tracking-tight">
+            먼저 뽑는 게 유리할까? 제비뽑기 확률 탐구!
+          </h1>
+        </div>
+      </div>
+
+      <!-- 핵심 질문 배지 -->
+      <div class="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-4 py-2 text-sm sm:text-base font-medium flex items-center gap-2">
+        <span class="text-yellow-300 text-xl">💡</span>
+        <span>탐구 목표: <strong>뽑는 순서</strong>가 바뀌어도 <strong>당첨 확률</strong>은 같을까?</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 컨테이너 -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+    <!-- 1. 제비 설정 컨트롤 패널 (공통) -->
+    <section class="bg-white rounded-3xl shadow-md border border-slate-200/80 p-5 sm:p-6">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        
+        <!-- 슬라이더 및 수치 조절 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 flex-1">
+          <!-- 전체 제비 개수 -->
+          <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200/70">
+            <div class="flex justify-between items-center mb-2">
+              <label for="totalTicketsInput" class="font-bold text-slate-700 text-base sm:text-lg flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-blue-500"></span> 전체 제비 개수 (N)
+              </label>
+              <span id="totalTicketsDisplay" class="font-title text-2xl text-blue-600 bg-blue-100 px-3 py-0.5 rounded-xl">5개</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <button onclick="adjustTotal(-1)" class="w-10 h-10 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 font-bold text-xl flex items-center justify-center shadow-sm active:scale-95">-</button>
+              <input type="range" id="totalTicketsInput" min="2" max="10" value="5" class="w-full h-3 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+              <button onclick="adjustTotal(1)" class="w-10 h-10 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 font-bold text-xl flex items-center justify-center shadow-sm active:scale-95">+</button>
+            </div>
+            <p class="text-xs text-slate-500 mt-2">2개부터 10개까지 설정할 수 있습니다.</p>
+          </div>
+
+          <!-- 당첨 제비 개수 -->
+          <div class="bg-amber-50/70 rounded-2xl p-4 border border-amber-200/80">
+            <div class="flex justify-between items-center mb-2">
+              <label for="winTicketsInput" class="font-bold text-slate-700 text-base sm:text-lg flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-amber-500"></span> 당첨 제비 개수 (W)
+              </label>
+              <span id="winTicketsDisplay" class="font-title text-2xl text-amber-600 bg-amber-100 px-3 py-0.5 rounded-xl">2개</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <button onclick="adjustWin(-1)" class="w-10 h-10 rounded-xl bg-white border border-amber-300 hover:bg-amber-100 font-bold text-xl flex items-center justify-center shadow-sm active:scale-95">-</button>
+              <input type="range" id="winTicketsInput" min="1" max="4" value="2" class="w-full h-3 bg-amber-200 rounded-lg appearance-none cursor-pointer accent-amber-500">
+              <button onclick="adjustWin(1)" class="w-10 h-10 rounded-xl bg-white border border-amber-300 hover:bg-amber-100 font-bold text-xl flex items-center justify-center shadow-sm active:scale-95">+</button>
+            </div>
+            <p class="text-xs text-slate-500 mt-2">최소 1개부터 전체 개수보다 1개 적게 설정됩니다.</p>
+          </div>
+        </div>
+
+        <!-- 빠른 프리셋 & 이론적 확률 요약 -->
+        <div class="flex flex-col justify-between gap-3 lg:w-80 bg-indigo-50/80 rounded-2xl p-4 border border-indigo-100">
+          <div>
+            <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider">수업용 빠른 프리셋</span>
+            <div class="flex flex-wrap gap-1.5 mt-2">
+              <button onclick="applyPreset(5, 2)" class="px-3 py-1.5 bg-white hover:bg-indigo-600 hover:text-white text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition shadow-sm">
+                기본 (5개 중 2개)
+              </button>
+              <button onclick="applyPreset(4, 1)" class="px-3 py-1.5 bg-white hover:bg-indigo-600 hover:text-white text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition shadow-sm">
+                복불복 (4개 중 1개)
+              </button>
+              <button onclick="applyPreset(10, 3)" class="px-3 py-1.5 bg-white hover:bg-indigo-600 hover:text-white text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition shadow-sm">
+                모둠뽑기 (10개 중 3개)
+              </button>
+            </div>
+          </div>
+
+          <div class="pt-2 border-t border-indigo-200/70 flex items-center justify-between">
+            <span class="text-sm font-bold text-slate-700">수학적(이론적) 확률:</span>
+            <div class="text-right">
+              <span id="theoreticalFraction" class="font-title text-xl text-indigo-700">2 / 5</span>
+              <span id="theoreticalPercent" class="ml-1.5 text-sm font-extrabold text-white bg-indigo-600 px-2 py-0.5 rounded-lg">40.0%</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 2. 모드 전환 내비게이션 탭 -->
+    <nav class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <button onclick="switchTab('play')" id="tab-play" class="tab-btn active flex items-center justify-center gap-2.5 py-4 px-5 rounded-2xl font-bold text-base sm:text-lg transition-all shadow-md bg-blue-600 text-white ring-4 ring-blue-200">
+        <span class="text-2xl">🙋‍♂️</span>
+        <div class="text-left">
+          <div class="leading-tight">1. 직접 뽑기 체험</div>
+          <div class="text-xs font-normal opacity-90">학생들이 차례대로 뽑아보기</div>
+        </div>
+      </button>
+
+      <button onclick="switchTab('sim')" id="tab-sim" class="tab-btn flex items-center justify-center gap-2.5 py-4 px-5 rounded-2xl font-bold text-base sm:text-lg transition-all shadow-sm bg-white text-slate-700 hover:bg-slate-50 border border-slate-200">
+        <span class="text-2xl">📊</span>
+        <div class="text-left">
+          <div class="leading-tight">2. 대규모 시뮬레이션</div>
+          <div class="text-xs font-normal text-slate-500">만 번 뽑아서 통계로 확인하기</div>
+        </div>
+      </button>
+
+      <button onclick="switchTab('math')" id="tab-math" class="tab-btn flex items-center justify-center gap-2.5 py-4 px-5 rounded-2xl font-bold text-base sm:text-lg transition-all shadow-sm bg-white text-slate-700 hover:bg-slate-50 border border-slate-200">
+        <span class="text-2xl">🧠</span>
+        <div class="text-left">
+          <div class="leading-tight">3. 수학적 원리 탐구</div>
+          <div class="text-xs font-normal text-slate-500">경우의 수와 분수식으로 증명</div>
+        </div>
+      </button>
+    </nav>
+
+    <!-- ===================================================================== -->
+    <!-- 모드 1: [직접 뽑기 체험 모드]                                          -->
+    <!-- ===================================================================== -->
+    <section id="panel-play" class="mode-panel space-y-6">
+      <!-- 상단 상태 표시줄 -->
+      <div class="bg-white rounded-3xl shadow-md border border-slate-200 p-5 sm:p-6">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4 pb-5 border-b border-slate-100">
+          <!-- 현재 차례 안내 -->
+          <div class="flex items-center gap-4">
+            <div id="turnBadge" class="bg-blue-600 text-white font-title text-2xl sm:text-3xl px-5 py-3 rounded-2xl shadow-md">
+              1번째 사람 차례!
+            </div>
+            <div>
+              <p id="turnGuideText" class="text-slate-700 font-bold text-base sm:text-lg">아래 제비 카드 중 하나를 선택해 클릭하세요.</p>
+              <p id="currentInstantProb" class="text-sm text-indigo-600 font-semibold mt-0.5">
+                현재 상황에서 뽑을 때 당첨 확률: 2 / 5 (40.0%)
+              </p>
+            </div>
+          </div>
+
+          <!-- 실시간 남은 제비 현황 & 초기화 버튼 -->
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-3 bg-slate-100 px-4 py-2.5 rounded-2xl text-sm sm:text-base font-bold">
+              <span class="text-slate-600">남은 제비: <strong id="remTotalText" class="text-slate-900 text-lg">5</strong>개</span>
+              <span class="text-slate-300">|</span>
+              <span class="text-amber-600">남은 당첨: <strong id="remWinText" class="text-amber-600 text-lg">2</strong>개</span>
+              <span class="text-slate-300">|</span>
+              <span class="text-slate-500">남은 꽝: <strong id="remLoseText" class="text-slate-700 text-lg">3</strong>개</span>
+            </div>
+
+            <button onclick="resetPlayGame()" class="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-5 py-3 rounded-2xl shadow-md transition active:scale-95">
+              <span>🔄</span> 다시 뽑기 (새 게임)
+            </button>
+          </div>
+        </div>
+
+        <!-- 결과 배너 (뽑을 때마다 팝업 형태로 메시지 표시) -->
+        <div id="playFeedbackBanner" class="mt-5 hidden rounded-2xl p-4 text-center font-title text-2xl sm:text-3xl shadow-inner">
+        </div>
+
+        <!-- 제비 카드 그리드 영역 -->
+        <div id="ticketCardsGrid" class="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 sm:gap-5">
+          <!-- JS로 제비 카드 렌더링 -->
+        </div>
+
+        <!-- 순서별 뽑기 기록 타임라인 -->
+        <div class="mt-8 pt-6 border-t border-slate-100">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold text-slate-700 text-base sm:text-lg flex items-center gap-2">
+              <span>📋</span> 이번 판 순서별 결과 기록
+            </h3>
+            <span class="text-xs text-slate-500">한 판이 끝나면 아래 [누적 통계]에 자동 반영됩니다.</span>
+          </div>
+          <div id="playHistoryTimeline" class="flex flex-wrap gap-2.5">
+            <!-- JS로 1번째 ~ N번째 슬롯 표시 -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 직접 뽑기 누적 미니 통계 (교실에서 학생들이 직접 뽑은 결과 누적) -->
+      <div class="bg-white rounded-3xl shadow-md border border-slate-200 p-5 sm:p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div>
+            <h3 class="font-title text-xl text-slate-800 flex items-center gap-2">
+              <span>🏆</span> 우리 반 직접 뽑기 누적 기록 (총 <span id="manualTotalGames" class="text-blue-600">0</span>판 완료)
+            </h3>
+            <p class="text-sm text-slate-500">직접 뽑기를 여러 판 진행하면 각 순서별로 몇 번 당첨되었는지 기록됩니다.</p>
+          </div>
+          <button onclick="resetManualStats()" class="self-start sm:self-auto text-xs font-bold text-slate-500 hover:text-red-600 bg-slate-100 hover:bg-red-50 px-3 py-2 rounded-xl transition">
+            직접 뽑기 기록 초기화
+          </button>
+        </div>
+        <div id="manualStatsContainer" class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <!-- JS로 순서별 직접 뽑기 당첨 횟수 표시 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- 모드 2: [대규모 시뮬레이션 모드]                                       -->
+    <!-- ===================================================================== -->
+    <section id="panel-sim" class="mode-panel hidden space-y-6">
+      <div class="bg-white rounded-3xl shadow-md border border-slate-200 p-5 sm:p-6">
+        <!-- 실행 컨트롤 바 -->
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+          <div>
+            <h2 class="font-title text-2xl text-slate-800 flex items-center gap-2">
+              <span>⚡</span> 컴퓨터 고속 시뮬레이션 (큰 수의 법칙)
+            </h2>
+            <p class="text-sm sm:text-base text-slate-600 mt-1">
+              사람 대신 컴퓨터가 수천, 수만 번 제비뽑기를 반복하여 <strong>각 순서별 실제 당첨 확률</strong>을 계산합니다.
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2.5">
+            <button onclick="runSimulation(100)" class="px-4 py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold rounded-2xl transition active:scale-95 shadow-sm">
+              + 100번 실행
+            </button>
+            <button onclick="runSimulation(1000)" class="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl transition active:scale-95 shadow-md">
+              + 1,000번 실행
+            </button>
+            <button onclick="runSimulation(10000)" class="px-5 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold rounded-2xl transition active:scale-95 shadow-md">
+              🚀 + 10,000번 실행
+            </button>
+            <button onclick="resetSimulation()" class="px-4 py-3 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 font-bold rounded-2xl transition">
+              초기화
+            </button>
+          </div>
+        </div>
+
+        <!-- 총 시행 횟수 & 이론적 확률 안내 -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 my-6">
+          <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 flex items-center justify-between">
+            <span class="font-bold text-slate-600">누적 시뮬레이션 횟수</span>
+            <span id="simTotalTrials" class="font-title text-3xl text-slate-900">0회</span>
+          </div>
+          <div class="bg-indigo-50 rounded-2xl p-4 border border-indigo-200/80 flex items-center justify-between">
+            <span class="font-bold text-indigo-800">이론적 당첨 확률 (목표선)</span>
+            <span id="simTargetProb" class="font-title text-3xl text-indigo-600">40.0%</span>
+          </div>
+          <div class="bg-emerald-50 rounded-2xl p-4 border border-emerald-200/80 flex items-center justify-between">
+            <span class="font-bold text-emerald-800">순서 간 최대 확률 차이</span>
+            <span id="simMaxDiff" class="font-title text-3xl text-emerald-600">-</span>
+          </div>
+        </div>
+
+        <!-- 막대 그래프 영역 (이론적 확률 기준선 포함) -->
+        <div class="bg-slate-50/70 rounded-3xl p-5 sm:p-6 border border-slate-200/80 relative">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+            <h3 class="font-bold text-slate-800 text-lg">순서별 당첨 확률 비교 그래프</h3>
+            <div class="flex items-center gap-4 text-xs sm:text-sm font-bold">
+              <span class="flex items-center gap-1.5">
+                <span class="w-4 h-4 rounded bg-blue-500 inline-block"></span> 실제 당첨 확률(%)
+              </span>
+              <span class="flex items-center gap-1.5 text-rose-600">
+                <span class="w-6 border-t-2 border-dashed border-rose-500 inline-block"></span> 이론적 확률 기준선
+              </span>
+            </div>
+          </div>
+
+          <!-- 차트 본체 -->
+          <div class="relative h-72 sm:h-80 pt-6 pb-2 px-2 sm:px-6 flex items-end justify-around gap-2 sm:gap-4 border-b-2 border-slate-300" id="simBarChart">
+            <!-- JS로 막대 그래프와 기준선 동적 생성 -->
+          </div>
+          
+          <!-- X축 라벨 영역 -->
+          <div id="simBarLabels" class="flex items-center justify-around gap-2 sm:gap-4 px-2 sm:px-6 pt-3">
+            <!-- JS로 1번째 ~ N번째 라벨 생성 -->
+          </div>
+        </div>
+
+        <!-- 상세 데이터 표 -->
+        <div class="mt-6 overflow-x-auto">
+          <table class="w-full text-center border-collapse rounded-2xl overflow-hidden shadow-sm border border-slate-200">
+            <thead class="bg-slate-100 text-slate-700 font-bold text-sm sm:text-base">
+              <tr>
+                <th class="py-3 px-4 border-b border-slate-200">뽑는 순서</th>
+                <th class="py-3 px-4 border-b border-slate-200">당첨 횟수</th>
+                <th class="py-3 px-4 border-b border-slate-200">전체 시행 횟수</th>
+                <th class="py-3 px-4 border-b border-slate-200 text-blue-700">실험적 당첨 확률</th>
+                <th class="py-3 px-4 border-b border-slate-200 text-rose-600">이론적 확률</th>
+                <th class="py-3 px-4 border-b border-slate-200">오차 (차이)</th>
+              </tr>
+            </thead>
+            <tbody id="simTableBody" class="bg-white divide-y divide-slate-100 text-sm sm:text-base">
+              <!-- JS로 데이터 행 채움 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- 모드 3: [수학적 원리 탐구 - 수형도 및 분수식 계산기]                   -->
+    <!-- ===================================================================== -->
+    <section id="panel-math" class="mode-panel hidden space-y-6">
+      
+      <!-- 핵심 개념 카드 -->
+      <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl shadow-md border border-amber-200 p-5 sm:p-6">
+        <div class="flex items-start gap-4">
+          <div class="bg-amber-400 text-white p-3 rounded-2xl text-2xl shadow-sm shrink-0">
+            🎓
+          </div>
+          <div>
+            <h2 class="font-title text-2xl text-slate-800">왜 순서가 바뀌어도 당첨 확률이 똑같을까요?</h2>
+            <p class="text-slate-700 mt-1.5 leading-relaxed text-sm sm:text-base">
+              앞사람이 당첨되면 내 당첨 확률이 줄어드는 것 같지만, 반대로 <strong>앞사람이 '꽝'을 뽑아주면 내 당첨 확률이 올라갑니다!</strong><br class="hidden sm:inline">
+              이 두 가지 경우의 확률을 모두 더하면 놀랍게도 <strong>처음(1번째) 사람이 뽑을 때의 확률과 정확히 일치</strong>합니다.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- 좌측: 모든 가능한 나열(경우의 수) 시각화 -->
+        <div class="bg-white rounded-3xl shadow-md border border-slate-200 p-5 sm:p-6 flex flex-col">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-title text-xl text-slate-800 flex items-center gap-2">
+              <span>🌳</span> 모든 가능한 뽑기 결과 나열하기
+            </h3>
+            <span id="totalPermutationsBadge" class="bg-blue-100 text-blue-800 text-xs font-extrabold px-3 py-1 rounded-full">
+              총 10가지 경우
+            </span>
+          </div>
+          <p class="text-sm text-slate-500 mb-4">
+            전체 <strong id="mathTotalText">5</strong>개의 제비(당첨 <strong class="text-amber-600" id="mathWinText">2</strong>개, 꽝 <strong class="text-slate-600" id="mathLoseText">3</strong>개)를 1번째부터 끝까지 일렬로 나열하는 모든 경우입니다. 각 열(세로줄)에서 <strong>당첨(⭕)의 개수</strong>를 세어보세요!
+          </p>
+
+          <!-- 경우의 수 리스트 컨테이너 -->
+          <div id="permutationsContainer" class="flex-1 max-h-96 overflow-y-auto bg-slate-50 rounded-2xl p-3 sm:p-4 border border-slate-200/80 space-y-2">
+            <!-- JS로 동적 생성 -->
+          </div>
+
+          <!-- 열별 합계 요약 -->
+          <div id="permutationSummaryBar" class="mt-4 pt-3 border-t border-slate-200">
+            <!-- JS로 각 순서별 당첨 횟수/전체 경우의 수 표시 -->
+          </div>
+        </div>
+
+        <!-- 우측: 중2 수준 분수식 확률 계산기 (1번째 vs 2번째) -->
+        <div class="bg-white rounded-3xl shadow-md border border-slate-200 p-5 sm:p-6 flex flex-col justify-between">
+          <div>
+            <h3 class="font-title text-xl text-slate-800 flex items-center gap-2 mb-3">
+              <span>🧮</span> 분수식으로 직접 계산해 보기 (1번째 vs 2번째)
+            </h3>
+            <p class="text-sm text-slate-500 mb-5">
+              중학교 2학년 확률의 덧셈과 곱셈 원리를 이용해 <strong>1번째 사람</strong>과 <strong>2번째 사람</strong>의 당첨 확률을 직접 계산합니다.
+            </p>
+
+            <!-- 분수식 증명 박스 -->
+            <div id="fractionProofContainer" class="space-y-4">
+              <!-- JS로 동적 생성 -->
+            </div>
+          </div>
+
+          <!-- 선생님 수업 팁 -->
+          <div class="mt-6 bg-indigo-50 rounded-2xl p-4 border border-indigo-100 text-sm text-indigo-900">
+            <p class="font-bold flex items-center gap-1.5 mb-1">
+              <span>💡</span> 핵심 정리 (선생님 포인트)
+            </p>
+            <p class="leading-relaxed text-indigo-800">
+              제비뽑기를 한 번 하고 결과를 확인한 뒤에는 확률이 변하지만, <strong>아직 아무도 뽑기 전(시작하기 전)에 각 순서가 가질 당첨 확률</strong>은 1번째부터 마지막 순서까지 모두 <strong id="summaryProbText" class="underline">2/5</strong>로 공평합니다!
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 푸터 -->
+  <footer class="bg-white border-t border-slate-200 py-4 px-6 text-center text-xs sm:text-sm text-slate-500 mt-8">
+    중학교 2학년 수학 「경우의 수와 확률」 수업용 인터랙티브 시뮬레이터 · 자유롭게 제비 개수를 바꾸며 탐구해 보세요!
+  </footer>
+
+  <!-- ===================================================================== -->
+  <!-- JavaScript 애플리케이션 로직                                           -->
+  <!-- ===================================================================== -->
+  <script>
+    // --- 전역 상태 관리 ---
+    const state = {
+      totalTickets: 5,
+      winTickets: 2,
+      // 직접 뽑기 모드 상태
+      tickets: [],         // { id, isWin, revealed, orderPicked }
+      currentTurn: 1,      // 현재 뽑을 차례 (1 ~ totalTickets)
+      gameOver: false,
+      manualStats: {
+        totalGames: 0,
+        winsByOrder: []    // 길이 = totalTickets
+      },
+      // 대규모 시뮬레이션 모드 상태
+      simStats: {
+        totalTrials: 0,
+        winsByOrder: []    // 길이 = totalTickets
+      }
+    };
+
+    // --- 유틸리티: 최대공약수(GCD) 및 기약분수 포맷 ---
+    function gcd(a, b) {
+      return b === 0 ? a : gcd(b, a % b);
+    }
+
+    function formatFraction(num, den) {
+      if (num === 0) return '0';
+      if (num === den) return '1';
+      const common = gcd(num, den);
+      return `${num / common} / ${den / common}`;
+    }
+
+    // --- 초기화 및 설정 변경 핸들러 ---
+    const totalInput = document.getElementById('totalTicketsInput');
+    const winInput = document.getElementById('winTicketsInput');
+
+    totalInput.addEventListener('input', (e) => {
+      updateSettings(parseInt(e.target.value, 10), state.winTickets);
+    });
+
+    winInput.addEventListener('input', (e) => {
+      updateSettings(state.totalTickets, parseInt(e.target.value, 10));
+    });
+
+    function adjustTotal(delta) {
+      const next = Math.min(10, Math.max(2, state.totalTickets + delta));
+      updateSettings(next, state.winTickets);
+    }
+
+    function adjustWin(delta) {
+      const maxWin = state.totalTickets - 1;
+      const next = Math.min(maxWin, Math.max(1, state.winTickets + delta));
+      updateSettings(state.totalTickets, next);
+    }
+
+    function applyPreset(total, win) {
+      updateSettings(total, win);
+    }
+
+    function updateSettings(newTotal, newWin) {
+      state.totalTickets = newTotal;
+      // 당첨 제비는 최소 1개, 최대 total - 1개
+      const validWin = Math.min(newTotal - 1, Math.max(1, newWin));
+      state.winTickets = validWin;
+
+      // UI 슬라이더 및 라벨 업데이트
+      totalInput.value = state.totalTickets;
+      winInput.max = state.totalTickets - 1;
+      winInput.value = state.winTickets;
+
+      document.getElementById('totalTicketsDisplay').textContent = `${state.totalTickets}개`;
+      document.getElementById('winTicketsDisplay').textContent = `${state.winTickets}개`;
+
+      // 이론적 확률 업데이트
+      const probPercent = ((state.winTickets / state.totalTickets) * 100).toFixed(1);
+      const fracStr = formatFraction(state.winTickets, state.totalTickets);
+      document.getElementById('theoreticalFraction').textContent = fracStr;
+      document.getElementById('theoreticalPercent').textContent = `${probPercent}%`;
+      document.getElementById('simTargetProb').textContent = `${probPercent}%`;
+
+      // 모든 모드 데이터 리셋 및 다시 렌더링
+      resetManualStats(false);
+      resetPlayGame();
+      resetSimulation();
+      renderMathExplorer();
+    }
+
+    // --- 탭 전환 로직 ---
+    function switchTab(tabName) {
+      // 모든 패널 숨기기
+      document.querySelectorAll('.mode-panel').forEach(panel => panel.classList.add('hidden'));
+      document.getElementById(`panel-${tabName}`).classList.remove('hidden');
+
+      // 모든 탭 버튼 스타일 초기화
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-blue-600', 'text-white', 'ring-4', 'ring-blue-200', 'shadow-md');
+        btn.classList.add('bg-white', 'text-slate-700', 'border', 'border-slate-200', 'shadow-sm');
+        const subText = btn.querySelector('div > div:last-child');
+        if (subText) subText.classList.add('text-slate-500');
+      });
+
+      // 선택된 탭 강조
+      const activeBtn = document.getElementById(`tab-${tabName}`);
+      activeBtn.classList.remove('bg-white', 'text-slate-700', 'border', 'border-slate-200', 'shadow-sm');
+      activeBtn.classList.add('bg-blue-600', 'text-white', 'ring-4', 'ring-blue-200', 'shadow-md');
+      const activeSubText = activeBtn.querySelector('div > div:last-child');
+      if (activeSubText) activeSubText.classList.remove('text-slate-500');
+
+      if (tabName === 'sim') {
+        renderSimulationUI();
+      } else if (tabName === 'math') {
+        renderMathExplorer();
+      }
+    }
+
+    // =========================================================================
+    // 모드 1: [직접 뽑기 체험 모드] 로직
+    // =========================================================================
+    function resetPlayGame() {
+      // 제비 배열 생성 후 피셔-예이츠(Fisher-Yates) 셔플
+      const arr = [];
+      for (let i = 0; i < state.totalTickets; i++) {
+        arr.push({
+          id: i + 1,
+          isWin: i < state.winTickets,
+          revealed: false,
+          orderPicked: null
+        });
+      }
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+
+      state.tickets = arr;
+      state.currentTurn = 1;
+      state.gameOver = false;
+
+      const banner = document.getElementById('playFeedbackBanner');
+      banner.classList.add('hidden');
+      banner.textContent = '';
+
+      renderPlayUI();
+    }
+
+    function pickTicket(index) {
+      if (state.gameOver || state.tickets[index].revealed) return;
+
+      const ticket = state.tickets[index];
+      ticket.revealed = true;
+      ticket.orderPicked = state.currentTurn;
+
+      const banner = document.getElementById('playFeedbackBanner');
+      banner.classList.remove('hidden', 'bg-amber-100', 'text-amber-800', 'border-amber-300', 'bg-slate-100', 'text-slate-700', 'border-slate-300', 'animate-pop', 'animate-shake');
+      void banner.offsetWidth; // 리플로우 트리거로 애니메이션 재실행
+
+      if (ticket.isWin) {
+        banner.classList.add('bg-amber-100', 'text-amber-800', 'border', 'border-amber-300', 'animate-pop');
+        banner.innerHTML = `🎉 <strong>${state.currentTurn}번째 순서</strong>: 축하합니다! <span class="text-amber-600 underline">당첨</span>입니다!`;
+        // 작은 폭죽 효과
+        if (typeof confetti === 'function') {
+          confetti({ particleCount: 45, spread: 60, origin: { y: 0.65 } });
+        }
+      } else {
+        banner.classList.add('bg-slate-100', 'text-slate-700', 'border', 'border-slate-300', 'animate-shake');
+        banner.innerHTML = `😅 <strong>${state.currentTurn}번째 순서</strong>: 아쉽네요! <span class="text-slate-500">꽝</span>입니다.`;
+      }
+
+      // 다음 차례로 이동 또는 게임 종료 처리
+      if (state.currentTurn >= state.totalTickets) {
+        state.gameOver = true;
+        recordManualGameResult();
+      } else {
+        state.currentTurn++;
+      }
+
+      renderPlayUI();
+    }
+
+    function recordManualGameResult() {
+      state.manualStats.totalGames++;
+      state.tickets.forEach(t => {
+        if (t.isWin && t.orderPicked) {
+          state.manualStats.winsByOrder[t.orderPicked - 1]++;
+        }
+      });
+      renderManualStatsUI();
+    }
+
+    function resetManualStats(render = true) {
+      state.manualStats = {
+        totalGames: 0,
+        winsByOrder: new Array(state.totalTickets).fill(0)
+      };
+      if (render) renderManualStatsUI();
+    }
+
+    function renderPlayUI() {
+      // 남은 제비 계산
+      const unrevealed = state.tickets.filter(t => !t.revealed);
+      const remTotal = unrevealed.length;
+      const remWin = unrevealed.filter(t => t.isWin).length;
+      const remLose = remTotal - remWin;
+
+      document.getElementById('remTotalText').textContent = remTotal;
+      document.getElementById('remWinText').textContent = remWin;
+      document.getElementById('remLoseText').textContent = remLose;
+
+      // 상단 차례 배지 업데이트
+      const turnBadge = document.getElementById('turnBadge');
+      const turnGuide = document.getElementById('turnGuideText');
+      const instantProb = document.getElementById('currentInstantProb');
+
+      if (state.gameOver) {
+        turnBadge.textContent = '모든 뽑기 완료!';
+        turnBadge.className = 'bg-emerald-600 text-white font-title text-2xl sm:text-3xl px-5 py-3 rounded-2xl shadow-md';
+        turnGuide.textContent = '한 판이 끝났습니다! [다시 뽑기]를 눌러 새 게임을 시작해 보세요.';
+        instantProb.textContent = '모든 제비가 공개되었습니다.';
+      } else {
+        turnBadge.textContent = `${state.currentTurn}번째 사람 차례!`;
+        turnBadge.className = 'bg-blue-600 text-white font-title text-2xl sm:text-3xl px-5 py-3 rounded-2xl shadow-md';
+        turnGuide.textContent = '아래 제비 카드 중 하나를 선택해 클릭하세요.';
+        const instantPercent = ((remWin / remTotal) * 100).toFixed(1);
+        instantProb.textContent = `지금 이 순간 남은 제비 중 당첨 확률: ${remWin} / ${remTotal} (${instantPercent}%)`;
+      }
+
+      // 제비 카드 그리드 렌더링
+      const grid = document.getElementById('ticketCardsGrid');
+      grid.innerHTML = '';
+
+      state.tickets.forEach((ticket, idx) => {
+        const btn = document.createElement('button');
+        btn.disabled = ticket.revealed || state.gameOver;
+        btn.onclick = () => pickTicket(idx);
+
+        if (!ticket.revealed) {
+          // 뽑히기 전 뒷면 카드
+          btn.className = 'ticket-card h-40 sm:h-48 rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white p-4 flex flex-col items-center justify-center shadow-md border-2 border-blue-400 cursor-pointer relative overflow-hidden group';
+          btn.innerHTML = `
+            <div class="absolute top-3 left-3 bg-white/20 text-xs font-bold px-2.5 py-1 rounded-full">제비 #${idx + 1}</div>
+            <span class="text-4xl sm:text-5xl mb-2 group-hover:scale-110 transition-transform">✉️</span>
+            <span class="font-title text-lg sm:text-xl tracking-wide">클릭해서 뽑기</span>
+          `;
+        } else if (ticket.isWin) {
+          // 당첨 공개 카드
+          btn.className = 'ticket-card h-40 sm:h-48 rounded-3xl bg-gradient-to-br from-amber-300 via-yellow-300 to-amber-400 text-amber-950 p-4 flex flex-col items-center justify-center shadow-inner border-4 border-amber-500 animate-pop relative';
+          btn.innerHTML = `
+            <div class="absolute top-3 left-3 bg-amber-900 text-amber-100 text-xs font-extrabold px-2.5 py-1 rounded-full">
+              ${ticket.orderPicked}번째 선택
+            </div>
+            <span class="text-4xl sm:text-5xl mb-1">🎉</span>
+            <span class="font-title text-2xl sm:text-3xl text-amber-900">당첨!</span>
+          `;
+        } else {
+          // 꽝 공개 카드
+          btn.className = 'ticket-card h-40 sm:h-48 rounded-3xl bg-slate-100 text-slate-500 p-4 flex flex-col items-center justify-center border-2 border-slate-300 relative opacity-90';
+          btn.innerHTML = `
+            <div class="absolute top-3 left-3 bg-slate-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+              ${ticket.orderPicked}번째 선택
+            </div>
+            <span class="text-4xl sm:text-5xl mb-1 grayscale">💨</span>
+            <span class="font-title text-2xl text-slate-500">꽝</span>
+          `;
+        }
+
+        grid.appendChild(btn);
+      });
+
+      // 순서별 뽑기 기록 타임라인 렌더링
+      const timeline = document.getElementById('playHistoryTimeline');
+      timeline.innerHTML = '';
+
+      for (let order = 1; order <= state.totalTickets; order++) {
+        const pickedTicket = state.tickets.find(t => t.orderPicked === order);
+        const item = document.createElement('div');
+
+        if (!pickedTicket) {
+          item.className = `px-4 py-2.5 rounded-2xl border text-sm font-bold flex items-center gap-2 ${
+            order === state.currentTurn && !state.gameOver
+              ? 'bg-blue-50 border-blue-400 text-blue-700 ring-2 ring-blue-200'
+              : 'bg-slate-50 border-slate-200 text-slate-400'
+          }`;
+          item.innerHTML = `<span>${order}번째:</span> <span>대기 중</span>`;
+        } else if (pickedTicket.isWin) {
+          item.className = 'px-4 py-2.5 rounded-2xl bg-amber-100 border border-amber-300 text-amber-900 text-sm font-extrabold flex items-center gap-1.5 shadow-sm';
+          item.innerHTML = `<span>${order}번째:</span> <span>🎉 당첨</span>`;
+        } else {
+          item.className = 'px-4 py-2.5 rounded-2xl bg-slate-200/70 border border-slate-300 text-slate-600 text-sm font-bold flex items-center gap-1.5';
+          item.innerHTML = `<span>${order}번째:</span> <span>꽝</span>`;
+        }
+        timeline.appendChild(item);
+      }
+
+      renderManualStatsUI();
+    }
+
+    function renderManualStatsUI() {
+      document.getElementById('manualTotalGames').textContent = state.manualStats.totalGames;
+      const container = document.getElementById('manualStatsContainer');
+      container.innerHTML = '';
+
+      for (let i = 0; i < state.totalTickets; i++) {
+        const wins = state.manualStats.winsByOrder[i] || 0;
+        const games = state.manualStats.totalGames;
+        const rate = games > 0 ? ((wins / games) * 100).toFixed(1) : '0.0';
+
+        const card = document.createElement('div');
+        card.className = 'bg-slate-50 border border-slate-200 rounded-2xl p-3 text-center';
+        card.innerHTML = `
+          <div class="text-xs font-bold text-slate-500 mb-1">${i + 1}번째 순서</div>
+          <div class="font-title text-xl text-blue-600">${wins}회 당첨</div>
+          <div class="text-xs font-semibold text-slate-600 mt-0.5">(${rate}%)</div>
+        `;
+        container.appendChild(card);
+      }
+    }
+
+    // =========================================================================
+    // 모드 2: [대규모 시뮬레이션 모드] 로직
+    // =========================================================================
+    function resetSimulation() {
+      state.simStats = {
+        totalTrials: 0,
+        winsByOrder: new Array(state.totalTickets).fill(0)
+      };
+      renderSimulationUI();
+    }
+
+    function runSimulation(trials) {
+      const N = state.totalTickets;
+      const W = state.winTickets;
+      const wins = state.simStats.winsByOrder;
+
+      // 빠른 무작위 샘플링 시뮬레이션
+      // N개 중 W개의 당첨 위치를 무작위로 선택 (부분 피셔-예이츠 셔플)
+      const indices = Array.from({ length: N }, (_, idx) => idx);
+
+      for (let t = 0; t < trials; t++) {
+        for (let i = 0; i < W; i++) {
+          const randIdx = i + Math.floor(Math.random() * (N - i));
+          // swap
+          const temp = indices[i];
+          indices[i] = indices[randIdx];
+          indices[randIdx] = temp;
+
+          // indices[i] 번째 순서가 당첨됨
+          wins[indices[i]]++;
+        }
+      }
+
+      state.simStats.totalTrials += trials;
+      renderSimulationUI();
+    }
+
+    function renderSimulationUI() {
+      const trials = state.simStats.totalTrials;
+      const N = state.totalTickets;
+      const W = state.winTickets;
+      const theoreticalProb = (W / N) * 100;
+
+      document.getElementById('simTotalTrials').textContent = `${trials.toLocaleString()}회`;
+
+      // 차트 & 테이블 초기화
+      const chartArea = document.getElementById('simBarChart');
+      const labelsArea = document.getElementById('simBarLabels');
+      const tableBody = document.getElementById('simTableBody');
+
+      chartArea.innerHTML = '';
+      labelsArea.innerHTML = '';
+      tableBody.innerHTML = '';
+
+      // 이론적 확률 기준선 (차트 높이 100% 기준 비율)
+      const refLine = document.createElement('div');
+      refLine.style.bottom = `${theoreticalProb}%`;
+      refLine.className = 'absolute left-0 right-0 border-t-2 border-dashed border-rose-500 z-10 pointer-events-none flex justify-end';
+      refLine.innerHTML = `
+        <span class="bg-rose-500 text-white text-xs font-extrabold px-2 py-0.5 rounded-md -mt-6 mr-2 shadow">
+          이론적 확률 ${theoreticalProb.toFixed(1)}%
+        </span>
+      `;
+      chartArea.appendChild(refLine);
+
+      let minRate = 100;
+      let maxRate = 0;
+
+      for (let i = 0; i < N; i++) {
+        const winCount = state.simStats.winsByOrder[i] || 0;
+        const rate = trials > 0 ? (winCount / trials) * 100 : 0;
+        const diff = trials > 0 ? rate - theoreticalProb : 0;
+
+        if (trials > 0) {
+          if (rate < minRate) minRate = rate;
+          if (rate > maxRate) maxRate = rate;
+        }
+
+        // 막대 그래프 바 생성
+        const barWrapper = document.createElement('div');
+        barWrapper.className = 'flex-1 h-full flex flex-col justify-end items-center relative group max-w-[80px]';
+
+        const barHeight = Math.min(100, Math.max(0, rate));
+        barWrapper.innerHTML = `
+          <div class="mb-1.5 text-xs sm:text-sm font-extrabold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-md shadow-xs">
+            ${trials > 0 ? rate.toFixed(1) + '%' : '0%'}
+          </div>
+          <div style="height: ${barHeight}%" class="w-full bg-gradient-to-t from-blue-600 to-cyan-400 rounded-t-xl transition-all duration-500 shadow-md group-hover:brightness-110"></div>
+        `;
+        chartArea.appendChild(barWrapper);
+
+        // X축 라벨
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'flex-1 text-center font-bold text-slate-700 text-xs sm:text-sm max-w-[80px]';
+        labelDiv.textContent = `${i + 1}번째`;
+        labelsArea.appendChild(labelDiv);
+
+        // 데이터 표 행 생성
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition';
+        const diffFormatted = trials === 0 ? '-' : `${diff >= 0 ? '+' : ''}${diff.toFixed(2)}%p`;
+        const diffColor = Math.abs(diff) <= 1.0 && trials >= 1000 ? 'text-emerald-600 font-bold' : 'text-slate-600';
+
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-bold text-slate-800">${i + 1}번째 순서</td>
+          <td class="py-3 px-4 font-semibold">${winCount.toLocaleString()}회</td>
+          <td class="py-3 px-4 text-slate-500">${trials.toLocaleString()}회</td>
+          <td class="py-3 px-4 font-extrabold text-blue-600">${trials > 0 ? rate.toFixed(2) + '%' : '-'}</td>
+          <td class="py-3 px-4 font-bold text-rose-600">${theoreticalProb.toFixed(2)}%</td>
+          <td class="py-3 px-4 ${diffColor}">${diffFormatted}</td>
+        `;
+        tableBody.appendChild(tr);
+      }
+
+      // 순서 간 최대 확률 차이 표시
+      const maxDiffEl = document.getElementById('simMaxDiff');
+      if (trials === 0) {
+        maxDiffEl.textContent = '-';
+      } else {
+        maxDiffEl.textContent = `${(maxRate - minRate).toFixed(2)}%p`;
+      }
+    }
+
+    // =========================================================================
+    // 모드 3: [수학적 원리 탐구 - 경우의 수 나열 및 분수식 계산기]
+    // =========================================================================
+    function generateCombinations(n, k) {
+      // 길이 n의 배열에서 k개의 true(당첨)를 배치하는 모든 조합 생성 (사전식 순서)
+      const results = [];
+      function backtrack(start, chosen) {
+        if (chosen.length === k) {
+          const seq = new Array(n).fill(false);
+          chosen.forEach(idx => (seq[idx] = true));
+          results.push(seq);
+          return;
+        }
+        for (let i = start; i < n; i++) {
+          chosen.push(i);
+          backtrack(i + 1, chosen);
+          chosen.pop();
+        }
+      }
+      backtrack(0, []);
+      return results;
+    }
+
+    function renderMathExplorer() {
+      const N = state.totalTickets;
+      const W = state.winTickets;
+      const L = N - W;
+
+      document.getElementById('mathTotalText').textContent = N;
+      document.getElementById('mathWinText').textContent = W;
+      document.getElementById('mathLoseText').textContent = L;
+      document.getElementById('summaryProbText').textContent = formatFraction(W, N);
+
+      // 1. 모든 경우의 수 생성 및 렌더링
+      const allCases = generateCombinations(N, W);
+      document.getElementById('totalPermutationsBadge').textContent = `총 ${allCases.length}가지 경우`;
+
+      const permContainer = document.getElementById('permutationsContainer');
+      permContainer.innerHTML = '';
+
+      allCases.forEach((seq, idx) => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-slate-200/80 shadow-2xs text-xs sm:text-sm';
+
+        const badgesHtml = seq.map((isWin, orderIdx) => {
+          if (isWin) {
+            return `<span class="inline-flex items-center justify-center px-2 py-1 rounded-lg bg-amber-100 text-amber-800 font-extrabold border border-amber-300" title="${orderIdx + 1}번째 당첨">
+              ${orderIdx + 1}번:⭕
+            </span>`;
+          } else {
+            return `<span class="inline-flex items-center justify-center px-2 py-1 rounded-lg bg-slate-100 text-slate-500 font-medium" title="${orderIdx + 1}번째 꽝">
+              ${orderIdx + 1}번:❌
+            </span>`;
+          }
+        }).join('');
+
+        row.innerHTML = `
+          <span class="font-bold text-slate-400 mr-2 shrink-0">경우 ${idx + 1}</span>
+          <div class="flex flex-wrap gap-1.5 justify-end">${badgesHtml}</div>
+        `;
+        permContainer.appendChild(row);
+      });
+
+      // 각 순서별 당첨 횟수 요약
+      const summaryBar = document.getElementById('permutationSummaryBar');
+      const winCountPerOrder = allCases.length * (W / N);
+      let summaryItemsHtml = '';
+      for (let i = 0; i < N; i++) {
+        summaryItemsHtml += `
+          <div class="bg-blue-50 border border-blue-200 rounded-xl px-2.5 py-1.5 text-center">
+            <div class="text-xs font-bold text-slate-600">${i + 1}번째</div>
+            <div class="text-xs sm:text-sm font-extrabold text-blue-700">${winCountPerOrder}/${allCases.length} = ${formatFraction(W, N)}</div>
+          </div>
+        `;
+      }
+      summaryBar.innerHTML = `
+        <div class="text-xs font-bold text-slate-600 mb-2">각 순서(세로줄)별 당첨(⭕) 비율:</div>
+        <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">${summaryItemsHtml}</div>
+      `;
+
+      // 2. 중2 수준 분수식 확률 계산기 렌더링 (1번째 vs 2번째)
+      const proofContainer = document.getElementById('fractionProofContainer');
+      const simpleFrac = formatFraction(W, N);
+      const percentStr = ((W / N) * 100).toFixed(1);
+
+      // Case A: 1번째 당첨 & 2번째 당첨
+      const case1Num = W * (W - 1);
+      const case1Den = N * (N - 1);
+
+      // Case B: 1번째 꽝 & 2번째 당첨
+      const case2Num = L * W;
+      const case2Den = N * (N - 1);
+
+      const sumNum = case1Num + case2Num;
+      const sumDen = N * (N - 1);
+
+      proofContainer.innerHTML = `
+        <!-- 1번째 사람 계산 -->
+        <div class="bg-blue-50/80 border border-blue-200 rounded-2xl p-4">
+          <div class="font-bold text-blue-900 text-base mb-1.5 flex items-center justify-between">
+            <span>① 1번째 사람이 당첨될 확률</span>
+            <span class="bg-blue-600 text-white text-xs px-2.5 py-0.5 rounded-full">기준</span>
+          </div>
+          <p class="text-sm text-slate-700">
+            전체 <strong>${N}개</strong> 중 당첨 제비가 <strong>${W}개</strong> 있으므로:
+          </p>
+          <div class="mt-2 bg-white rounded-xl p-3 font-bold text-center text-blue-700 text-base sm:text-lg border border-blue-100">
+            P(1번째 당첨) = ${W} / ${N} = <span class="text-xl underline">${simpleFrac}</span> (${percentStr}%)
+          </div>
+        </div>
+
+        <!-- 2번째 사람 계산 -->
+        <div class="bg-amber-50/80 border border-amber-200 rounded-2xl p-4 space-y-2.5">
+          <div class="font-bold text-amber-900 text-base flex items-center justify-between">
+            <span>② 2번째 사람이 당첨될 확률 (두 가지 경우의 합)</span>
+            <span class="bg-amber-500 text-white text-xs px-2.5 py-0.5 rounded-full">핵심 증명</span>
+          </div>
+
+          <div class="text-xs sm:text-sm text-slate-700 space-y-1.5 bg-white/80 p-3 rounded-xl border border-amber-100">
+            <div class="flex justify-between items-center">
+              <span>• <strong>경우 1</strong> (1번째 ⭕ 그리고 2번째 ⭕):</span>
+              <span class="font-bold text-slate-800">(${W}/${N}) × (${W - 1}/${N - 1}) = <span class="text-amber-700">${case1Num}/${case1Den}</span></span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span>• <strong>경우 2</strong> (1번째 ❌ 그리고 2번째 ⭕):</span>
+              <span class="font-bold text-slate-800">(${L}/${N}) × (${W}/${N - 1}) = <span class="text-amber-700">${case2Num}/${case2Den}</span></span>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl p-3 font-bold text-center text-amber-800 text-sm sm:text-base border border-amber-200">
+            두 확률을 더하면: (${case1Num}/${case1Den}) + (${case2Num}/${case2Den}) = ${sumNum}/${sumDen} = <span class="text-xl text-rose-600 underline">${simpleFrac}</span> (${percentStr}%)
+          </div>
+        </div>
+      `;
+    }
+
+    // --- 페이지 로드 시 초기 실행 ---
+    window.addEventListener('DOMContentLoaded', () => {
+      updateSettings(5, 2);
+    });
+  </script>
+</body>
+</html>
