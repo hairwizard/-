@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>동전 던지기: 상대도수와 수학적 확률 탐구 (중2 수학)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Jua & Noto Sans KR -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: #f1f5f9;
+      background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    .font-title {
+      font-family: 'Jua', sans-serif;
+    }
+
+    /* 3D 동전 애니메이션 */
+    .coin-stage {
+      perspective: 1000px;
+    }
+    .coin {
+      width: 96px;
+      height: 96px;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    @media (min-width: 640px) {
+      .coin {
+        width: 112px;
+        height: 112px;
+      }
+    }
+    .coin-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      backface-visibility: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 0 0 6px rgba(255, 255, 255, 0.35), 0 10px 20px -5px rgba(15, 23, 42, 0.25);
+      user-select: none;
+    }
+    .coin-front {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 60%, #d97706 100%);
+      color: #78350f;
+      border: 4px solid #fcd34d;
+    }
+    .coin-back {
+      background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 65%, #64748b 100%);
+      color: #1e293b;
+      border: 4px solid #f1f5f9;
+      transform: rotateY(180deg);
+    }
+
+    @keyframes flipToFront {
+      0% { transform: rotateY(0deg) translateY(0) scale(1); }
+      45% { transform: rotateY(540deg) translateY(-48px) scale(1.15); }
+      100% { transform: rotateY(1080deg) translateY(0) scale(1); }
+    }
+    @keyframes flipToBack {
+      0% { transform: rotateY(0deg) translateY(0) scale(1); }
+      45% { transform: rotateY(630deg) translateY(-48px) scale(1.15); }
+      100% { transform: rotateY(1260deg) translateY(0) scale(1); }
+    }
+    .animate-flip-front {
+      animation: flipToFront 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    .animate-flip-back {
+      animation: flipToBack 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    /* 스크롤바 커스텀 */
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 8px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+  <!-- 상단 수업 헤더 -->
+  <header class="bg-gradient-to-r from-blue-700 via-indigo-700 to-violet-700 text-white shadow-lg sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col lg:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-3.5">
+        <div class="bg-amber-400 text-amber-950 w-12 h-12 rounded-2xl flex items-center justify-center font-title text-2xl shadow-md shrink-0">
+          🪙
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2 mb-0.5">
+            <span class="bg-white/20 text-white text-xs font-extrabold px-2.5 py-0.5 rounded-full tracking-wide">
+              중학교 2학년 수학 · 경우의 수와 확률
+            </span>
+          </div>
+          <h1 class="font-title text-2xl sm:text-3xl tracking-tight">
+            동전 던지기로 보는 상대도수와 확률
+          </h1>
+        </div>
+      </div>
+
+      <!-- 핵심 학습 목표 배지 -->
+      <div class="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-4 py-2 text-xs sm:text-sm font-medium flex items-center gap-2.5">
+        <span class="text-amber-300 text-xl">🎯</span>
+        <span>
+          시행 횟수가 커지면 <strong>상대도수(통계적 확률)</strong>는 <strong class="text-amber-200 underline">전체 경우의 수 분의 사건의 경우의 수(수학적 확률)</strong>에 한없이 가까워진다!
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 콘텐츠 영역 -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+    <!-- 1. 실험 조건 설정 패널 (동전 개수 및 탐구 사건 선택) -->
+    <section class="bg-white rounded-3xl shadow-md border border-slate-200/80 p-5 sm:p-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        
+        <!-- 동전 개수 모드 선택 (5칸) -->
+        <div class="lg:col-span-5 space-y-2.5">
+          <label class="text-sm font-extrabold text-slate-600 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span> 1단계: 동시에 던질 동전 개수 선택
+          </label>
+          <div class="grid grid-cols-3 gap-2.5">
+            <button onclick="selectCoinCount(1)" id="coinBtn-1" class="coin-mode-btn py-3 px-3 rounded-2xl font-bold text-sm sm:text-base transition-all border-2 bg-blue-600 text-white border-blue-600 shadow-md">
+              🪙 동전 1개
+              <span class="block text-xs font-normal opacity-90 mt-0.5">전체 2가지</span>
+            </button>
+            <button onclick="selectCoinCount(2)" id="coinBtn-2" class="coin-mode-btn py-3 px-3 rounded-2xl font-bold text-sm sm:text-base transition-all border-2 bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100">
+              🪙🪙 동전 2개
+              <span class="block text-xs font-normal text-slate-500 mt-0.5">전체 4가지</span>
+            </button>
+            <button onclick="selectCoinCount(3)" id="coinBtn-3" class="coin-mode-btn py-3 px-3 rounded-2xl font-bold text-sm sm:text-base transition-all border-2 bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100">
+              🪙🪙🪙 동전 3개
+              <span class="block text-xs font-normal text-slate-500 mt-0.5">전체 8가지</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 관찰할 사건 선택 (7칸) -->
+        <div class="lg:col-span-7 space-y-2.5">
+          <label class="text-sm font-extrabold text-slate-600 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> 2단계: 확률을 구할 '사건' 선택하기
+          </label>
+          <div id="eventSelectorGrid" class="flex flex-wrap gap-2.5">
+            <!-- JS로 동전 개수별 사건 버튼 렌더링 -->
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 2. 상단 핵심 비교 대시보드 (수학적 확률 vs 상대도수 실시간 비교) -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      
+      <!-- 좌측: 수학적 확률 (경우의 수 기반) -->
+      <div class="bg-gradient-to-br from-indigo-50 via-blue-50 to-white rounded-3xl shadow-md border-2 border-indigo-200 p-5 sm:p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="bg-indigo-600 text-white text-xs font-extrabold px-3 py-1 rounded-full">
+              이론 · 경우의 수로 계산
+            </span>
+            <span class="text-xs font-bold text-indigo-700">변하지 않는 기준값</span>
+          </div>
+          <h2 class="font-title text-2xl text-slate-800 mb-4">수학적 확률 (이론적 확률)</h2>
+
+          <!-- 분수 공식 시각화 -->
+          <div class="bg-white rounded-2xl p-4 sm:p-5 border border-indigo-100 shadow-xs flex flex-col sm:flex-row items-center justify-around gap-4">
+            <div class="text-center">
+              <div class="text-xs font-bold text-slate-500 mb-1">그 사건이 일어나는 경우의 수</div>
+              <div id="mathFavorableCount" class="font-title text-3xl text-amber-600">1</div>
+              <div class="w-44 h-0.5 bg-slate-800 my-1.5 mx-auto"></div>
+              <div id="mathSampleCount" class="font-title text-3xl text-indigo-700">2</div>
+              <div class="text-xs font-bold text-slate-500 mt-1">전체 경우의 수</div>
+            </div>
+
+            <div class="text-3xl font-black text-slate-300">=</div>
+
+            <div class="text-center bg-indigo-50/80 px-6 py-4 rounded-2xl border border-indigo-200">
+              <div class="text-xs font-extrabold text-indigo-600 mb-1">수학적 확률</div>
+              <div id="mathProbFraction" class="font-title text-3xl text-indigo-800">1 / 2</div>
+              <div id="mathProbDecimal" class="text-2xl font-black text-indigo-600 mt-0.5">0.5000</div>
+            </div>
+          </div>
+        </div>
+
+        <p id="mathFormulaExplain" class="text-xs sm:text-sm text-slate-600 mt-4 bg-white/70 p-3 rounded-xl border border-indigo-100">
+          전체 <strong>2가지</strong> 경우 중 선택하신 사건에 해당하는 경우는 <strong>1가지</strong>입니다.
+        </p>
+      </div>
+
+      <!-- 우측: 통계적 확률 (상대도수 실험 결과) -->
+      <div class="bg-gradient-to-br from-emerald-50 via-teal-50 to-white rounded-3xl shadow-md border-2 border-emerald-200 p-5 sm:p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="bg-emerald-600 text-white text-xs font-extrabold px-3 py-1 rounded-full">
+              실험 · 동전을 직접 던져서 계산
+            </span>
+            <span id="convergenceStatusBadge" class="text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+              동전을 던져보세요!
+            </span>
+          </div>
+          <h2 class="font-title text-2xl text-slate-800 mb-4">상대도수 (실험적 확률)</h2>
+
+          <!-- 상대도수 공식 시각화 -->
+          <div class="bg-white rounded-2xl p-4 sm:p-5 border border-emerald-100 shadow-xs flex flex-col sm:flex-row items-center justify-around gap-4">
+            <div class="text-center">
+              <div class="text-xs font-bold text-slate-500 mb-1">사건이 일어난 횟수 (도수)</div>
+              <div id="empEventCount" class="font-title text-3xl text-emerald-600">0</div>
+              <div class="w-44 h-0.5 bg-slate-800 my-1.5 mx-auto"></div>
+              <div id="empTotalTrials" class="font-title text-3xl text-slate-800">0</div>
+              <div class="text-xs font-bold text-slate-500 mt-1">전체 시행 횟수 (총 도수)</div>
+            </div>
+
+            <div class="text-3xl font-black text-slate-300">=</div>
+
+            <div class="text-center bg-emerald-50/80 px-6 py-4 rounded-2xl border border-emerald-200">
+              <div class="text-xs font-extrabold text-emerald-700 mb-1">현재 상대도수</div>
+              <div id="empRelFreqDecimal" class="font-title text-3xl sm:text-4xl text-emerald-700">0.0000</div>
+              <div id="empDiffText" class="text-xs font-bold text-slate-500 mt-1">수학적 확률과의 차이: -</div>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-xs sm:text-sm text-slate-600 mt-4 bg-white/70 p-3 rounded-xl border border-emerald-100">
+          💡 시행 횟수가 적을 때는 들쭉날쭉하지만, <strong>100번, 1,000번 이상</strong> 던지면 위 <strong>수학적 확률</strong>과 똑같아집니다!
+        </p>
+      </div>
+
+    </section>
+
+    <!-- 3. 동전 던지기 실행 무대 & 실시간 수렴 그래프 -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- 좌측: 인터랙티브 동전 무대 및 컨트롤 (5칸) -->
+      <div class="lg:col-span-5 bg-white rounded-3xl shadow-md border border-slate-200 p-5 sm:p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-title text-xl text-slate-800 flex items-center gap-2">
+              <span>🎲</span> 동전 던지기 실험실
+            </h3>
+            <span id="lastOutcomeBadge" class="text-xs font-extrabold px-3 py-1 rounded-full bg-slate-100 text-slate-600">
+              대기 중
+            </span>
+          </div>
+
+          <!-- 동전 애니메이션 무대 -->
+          <div class="bg-slate-900 rounded-3xl p-6 flex flex-col items-center justify-center min-h-[210px] relative overflow-hidden shadow-inner">
+            <!-- 배경 장식 -->
+            <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]"></div>
+            
+            <!-- 동전들이 놓이는 공간 -->
+            <div id="coinsContainer" class="coin-stage flex items-center justify-center gap-4 sm:gap-6 z-10 my-2">
+              <!-- JS로 동전 1~3개 렌더링 -->
+            </div>
+
+            <!-- 최근 결과 텍스트 안내 -->
+            <div id="tossResultText" class="mt-4 text-sm sm:text-base font-bold text-slate-300 z-10 text-center">
+              아래 버튼을 눌러 동전을 던져보세요!
+            </div>
+          </div>
+        </div>
+
+        <!-- 던지기 컨트롤 버튼 그룹 -->
+        <div class="mt-6 space-y-3">
+          <button onclick="tossCoins(1)" class="w-full py-4 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-slate-950 font-title text-2xl rounded-2xl shadow-md transition active:scale-95 flex items-center justify-center gap-2">
+            <span>🪙</span> 1번 던지기 (애니메이션)
+          </button>
+
+          <div class="grid grid-cols-3 gap-2.5">
+            <button onclick="tossCoins(10)" class="py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-extrabold rounded-2xl transition active:scale-95 text-sm sm:text-base">
+              + 10번
+            </button>
+            <button onclick="tossCoins(100)" class="py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-2xl shadow-sm transition active:scale-95 text-sm sm:text-base">
+              + 100번
+            </button>
+            <button onclick="tossCoins(1000)" class="py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-2xl shadow-sm transition active:scale-95 text-sm sm:text-base">
+              🚀 + 1,000번
+            </button>
+          </div>
+
+          <button onclick="resetExperiment()" class="w-full py-2.5 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 font-bold rounded-xl transition text-sm">
+            🔄 실험 기록 초기화
+          </button>
+        </div>
+      </div>
+
+      <!-- 우측: 시행 횟수에 따른 상대도수 변화 꺾은선 그래프 (7칸) -->
+      <div class="lg:col-span-7 bg-white rounded-3xl shadow-md border border-slate-200 p-5 sm:p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div>
+              <h3 class="font-title text-xl text-slate-800 flex items-center gap-2">
+                <span>📈</span> 시행 횟수에 따른 상대도수 변화 그래프
+              </h3>
+              <p class="text-xs sm:text-sm text-slate-500">
+                가로축(시행 횟수)이 오른쪽으로 갈수록 파란 선(상대도수)이 빨간 점선(수학적 확률)에 달라붙습니다.
+              </p>
+            </div>
+            <div class="flex items-center gap-3 text-xs font-bold bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
+              <span class="flex items-center gap-1.5 text-blue-700">
+                <span class="w-3 h-3 rounded-full bg-blue-600 inline-block"></span> 상대도수
+              </span>
+              <span class="flex items-center gap-1.5 text-rose-600">
+                <span class="w-5 border-t-2 border-dashed border-rose-500 inline-block"></span> 수학적 확률
+              </span>
+            </div>
+          </div>
+
+          <!-- 반응형 캔버스 컨테이너 -->
+          <div id="chartContainer" class="w-full h-72 sm:h-80 bg-slate-50/70 rounded-2xl border border-slate-200/80 p-2 relative">
+            <canvas id="convergenceChart" class="w-full h-full block"></canvas>
+          </div>
+        </div>
+
+        <!-- 그래프 하단 요약 가이드 -->
+        <div class="mt-4 grid grid-cols-3 gap-2 text-center text-xs sm:text-sm">
+          <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70">
+            <span class="text-slate-500 block text-xs">초반 (1~10회)</span>
+            <strong class="text-slate-700">큰 폭으로 출렁임</strong>
+          </div>
+          <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70">
+            <span class="text-slate-500 block text-xs">중반 (100회 전후)</span>
+            <strong class="text-blue-700">점점 기준선 근처로</strong>
+          </div>
+          <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70">
+            <span class="text-slate-500 block text-xs">후반 (1,000회 이상)</span>
+            <strong class="text-rose-600">수학적 확률에 수렴!</strong>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- 4. 전체 경우의 수(표본공간) 시각화 패널 -->
+    <section class="bg-white rounded-3xl shadow-md border border-slate-200 p-5 sm:p-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-4 border-b border-slate-100">
+        <div>
+          <h3 class="font-title text-xl sm:text-2xl text-slate-800 flex items-center gap-2">
+            <span>🔍</span> 전체 경우의 수 한눈에 보기 (표본공간)
+          </h3>
+          <p class="text-sm text-slate-600 mt-0.5">
+            동전을 던질 때 일어날 수 있는 <strong>모든 경우</strong> 중, 노란색으로 강조된 카드가 <strong>선택한 사건이 일어나는 경우</strong>입니다.
+          </p>
+        </div>
+        <div id="sampleSpaceSummaryBadge" class="self-start sm:self-auto bg-amber-100 text-amber-900 border border-amber-300 font-extrabold px-4 py-2 rounded-2xl text-sm">
+          전체 2가지 중 1가지 해당
+        </div>
+      </div>
+
+      <!-- 모든 경우의 수 카드 그리드 -->
+      <div id="sampleSpaceGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <!-- JS로 (앞, 앞), (앞, 뒤) 등의 시각 카드 생성 -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 푸터 -->
+  <footer class="bg-white border-t border-slate-200 py-4 px-6 text-center text-xs sm:text-sm text-slate-500 mt-8">
+    중학교 2학년 수학 「경우의 수와 확률」 수업용 시뮬레이터 · 상대도수와 수학적 확률의 관계를 직접 확인해 보세요!
+  </footer>
+
+  <!-- ===================================================================== -->
+  <!-- JavaScript 시뮬레이터 엔진                                              -->
+  <!-- ===================================================================== -->
+  <script>
+    // --- 동전 개수별 탐구 사건 정의 ---
+    const EVENT_DEFINITIONS = {
+      1: [
+        {
+          id: 'c1_h1',
+          label: '앞면이 나오는 경우',
+          description: '동전 1개를 던져 앞면이 나오는 사건',
+          predicate: (outcomes) => outcomes[0] === 'H'
+        },
+        {
+          id: 'c1_t1',
+          label: '뒷면이 나오는 경우',
+          description: '동전 1개를 던져 뒷면이 나오는 사건',
+          predicate: (outcomes) => outcomes[0] === 'T'
+        }
+      ],
+      2: [
+        {
+          id: 'c2_h1',
+          label: '앞면이 1개 나오는 경우',
+          description: '동전 2개 중 앞면이 정확히 1개(뒷면 1개) 나오는 사건',
+          predicate: (outcomes) => outcomes.filter(x => x === 'H').length === 1
+        },
+        {
+          id: 'c2_h2',
+          label: '모두 앞면이 나오는 경우',
+          description: '동전 2개 모두 앞면이 나오는 사건',
+          predicate: (outcomes) => outcomes.filter(x => x === 'H').length === 2
+        },
+        {
+          id: 'c2_atleast1h',
+          label: '적어도 1개는 앞면인 경우',
+          description: '동전 2개 중 앞면이 1개 이상 나오는 사건',
+          predicate: (outcomes) => outcomes.filter(x => x === 'H').length >= 1
+        }
+      ],
+      3: [
+        {
+          id: 'c3_h2',
+          label: '앞면이 2개 나오는 경우',
+          description: '동전 3개 중 앞면이 정확히 2개 나오는 사건',
+          predicate: (outcomes) => outcomes.filter(x => x === 'H').length === 2
+        },
+        {
+          id: 'c3_h3',
+          label: '모두 앞면이 나오는 경우',
+          description: '동전 3개 모두 앞면이 나오는 사건',
+          predicate: (outcomes) => outcomes.filter(x => x === 'H').length === 3
+        },
+        {
+          id: 'c3_atleast1h',
+          label: '적어도 1개는 앞면인 경우',
+          description: '동전 3개 중 앞면이 1개 이상 나오는 사건',
+          predicate: (outcomes) => outcomes.filter(x => x === 'H').length >= 1
+        },
+        {
+          id: 'c3_same',
+          label: '3개 모두 같은 면인 경우',
+          description: '모두 앞면이거나 모두 뒷면이 나오는 사건',
+          predicate: (outcomes) => {
+            const h = outcomes.filter(x => x === 'H').length;
+            return h === 3 || h === 0;
+          }
+        }
+      ]
+    };
+
+    // --- 전역 시뮬레이터 상태 ---
+    const state = {
+      coinCount: 1,
+      selectedEventId: 'c1_h1',
+      sampleSpace: [],       // 모든 가능한 결과 배열 예: [['H','H'], ['H','T'], ...]
+      favorableCount: 1,     // 선택된 사건의 경우의 수
+      totalTrials: 0,        // 총 시행 횟수 (N)
+      eventCount: 0,         // 사건이 일어난 횟수 (r)
+      history: [],           // 그래프용 데이터 포인트 { trial, relFreq }
+      lastCoins: ['H'],      // 화면에 표시할 현재 동전 면
+      isAnimating: false
+    };
+
+    // --- 유틸리티: 최대공약수 & 기약분수 ---
+    function gcd(a, b) {
+      return b === 0 ? a : gcd(b, a % b);
+    }
+
+    function formatFraction(num, den) {
+      if (num === 0) return '0';
+      if (num === den) return '1';
+      const common = gcd(num, den);
+      return `${num / common} / ${den / common}`;
+    }
+
+    // --- 표본공간(전체 경우의 수) 생성 ---
+    function generateSampleSpace(n) {
+      const results = [];
+      function backtrack(current) {
+        if (current.length === n) {
+          results.push([...current]);
+          return;
+        }
+        current.push('H');
+        backtrack(current);
+        current.pop();
+
+        current.push('T');
+        backtrack(current);
+        current.pop();
+      }
+      backtrack([]);
+      return results;
+    }
+
+    function getCurrentEventDef() {
+      const list = EVENT_DEFINITIONS[state.coinCount];
+      return list.find(e => e.id === state.selectedEventId) || list[0];
+    }
+
+    // --- 모드 및 사건 선택 핸들러 ---
+    function selectCoinCount(count) {
+      state.coinCount = count;
+      state.selectedEventId = EVENT_DEFINITIONS[count][0].id;
+      state.lastCoins = new Array(count).fill('H');
+
+      // 버튼 스타일 업데이트
+      [1, 2, 3].forEach(c => {
+        const btn = document.getElementById(`coinBtn-${c}`);
+        const sub = btn.querySelector('span');
+        if (c === count) {
+          btn.className = 'coin-mode-btn py-3 px-3 rounded-2xl font-bold text-sm sm:text-base transition-all border-2 bg-blue-600 text-white border-blue-600 shadow-md';
+          sub.className = 'block text-xs font-normal opacity-90 mt-0.5';
+        } else {
+          btn.className = 'coin-mode-btn py-3 px-3 rounded-2xl font-bold text-sm sm:text-base transition-all border-2 bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100';
+          sub.className = 'block text-xs font-normal text-slate-500 mt-0.5';
+        }
+      });
+
+      renderEventButtons();
+      recalculateMathModel();
+      resetExperiment();
+    }
+
+    function selectEvent(eventId) {
+      state.selectedEventId = eventId;
+      renderEventButtons();
+      recalculateMathModel();
+      resetExperiment();
+    }
+
+    function renderEventButtons() {
+      const container = document.getElementById('eventSelectorGrid');
+      container.innerHTML = '';
+
+      const events = EVENT_DEFINITIONS[state.coinCount];
+      events.forEach(ev => {
+        const isSelected = ev.id === state.selectedEventId;
+        const btn = document.createElement('button');
+        btn.onclick = () => selectEvent(ev.id);
+        btn.className = isSelected
+          ? 'px-4 py-2.5 rounded-2xl font-bold text-sm sm:text-base bg-amber-400 text-amber-950 border-2 border-amber-500 shadow-sm transition'
+          : 'px-4 py-2.5 rounded-2xl font-bold text-sm sm:text-base bg-slate-100 text-slate-700 border-2 border-transparent hover:bg-slate-200 transition';
+        btn.textContent = ev.label;
+        container.appendChild(btn);
+      });
+    }
+
+    // --- 수학적 확률 및 표본공간 UI 갱신 ---
+    function recalculateMathModel() {
+      state.sampleSpace = generateSampleSpace(state.coinCount);
+      const eventDef = getCurrentEventDef();
+
+      let fav = 0;
+      state.sampleSpace.forEach(outcome => {
+        if (eventDef.predicate(outcome)) fav++;
+      });
+      state.favorableCount = fav;
+
+      const totalCases = state.sampleSpace.length;
+      const mathProb = fav / totalCases;
+      const fracStr = formatFraction(fav, totalCases);
+
+      // 수학적 확률 카드 업데이트
+      document.getElementById('mathFavorableCount').textContent = fav;
+      document.getElementById('mathSampleCount').textContent = totalCases;
+      document.getElementById('mathProbFraction').textContent = fracStr;
+      document.getElementById('mathProbDecimal').textContent = mathProb.toFixed(4);
+      document.getElementById('mathFormulaExplain').innerHTML =
+        `전체 <strong>${totalCases}가지</strong> 경우 중 <strong>「${eventDef.label}」</strong>에 해당하는 경우는 <strong>${fav}가지</strong>이므로 수학적 확률은 <strong>${fav}/${totalCases} (${mathProb.toFixed(4)})</strong>입니다.`;
+
+      // 표본공간 카드 렌더링
+      document.getElementById('sampleSpaceSummaryBadge').textContent =
+        `전체 ${totalCases}가지 중 ${fav}가지 해당`;
+
+      const grid = document.getElementById('sampleSpaceGrid');
+      grid.innerHTML = '';
+
+      // 동전 3개일 때는 4열 또는 8개 카드가 깔끔하게 보이도록 조정
+      grid.className = totalCases === 8
+        ? 'grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4'
+        : 'grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4';
+
+      state.sampleSpace.forEach((outcome, idx) => {
+        const isMatch = eventDef.predicate(outcome);
+        const card = document.createElement('div');
+        card.className = isMatch
+          ? 'rounded-2xl p-3.5 bg-amber-50 border-2 border-amber-400 shadow-sm flex flex-col items-center justify-between relative'
+          : 'rounded-2xl p-3.5 bg-slate-50 border border-slate-200 opacity-75 flex flex-col items-center justify-between relative';
+
+        const badge = isMatch
+          ? '<span class="text-[11px] font-extrabold bg-amber-400 text-amber-950 px-2 py-0.5 rounded-full mb-2">사건 해당 ⭕</span>'
+          : '<span class="text-[11px] font-bold bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full mb-2">해당 안 됨</span>';
+
+        const coinsHtml = outcome.map(side => {
+          if (side === 'H') {
+            return `<span class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 border-2 border-amber-600 text-amber-950 font-title text-sm sm:text-base flex items-center justify-center shadow-xs">앞</span>`;
+          } else {
+            return `<span class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-slate-200 to-slate-400 border-2 border-slate-500 text-slate-800 font-title text-sm sm:text-base flex items-center justify-center shadow-xs">뒤</span>`;
+          }
+        }).join('');
+
+        const textLabel = '(' + outcome.map(s => (s === 'H' ? '앞' : '뒤')).join(', ') + ')';
+
+        card.innerHTML = `
+          ${badge}
+          <div class="flex items-center justify-center gap-1.5 my-1">${coinsHtml}</div>
+          <div class="text-xs font-bold text-slate-700 mt-2">${textLabel}</div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // --- 동전 던지기 실행 및 통계 누적 ---
+    function resetExperiment() {
+      state.totalTrials = 0;
+      state.eventCount = 0;
+      state.history = [];
+      state.lastCoins = new Array(state.coinCount).fill('H');
+
+      document.getElementById('lastOutcomeBadge').textContent = '대기 중';
+      document.getElementById('lastOutcomeBadge').className = 'text-xs font-extrabold px-3 py-1 rounded-full bg-slate-100 text-slate-600';
+      document.getElementById('tossResultText').textContent = '아래 버튼을 눌러 동전을 던져보세요!';
+
+      renderCoins(false);
+      updateStatsUI();
+      drawConvergenceChart();
+    }
+
+    function tossCoins(times) {
+      const eventDef = getCurrentEventDef();
+      const n = state.coinCount;
+      let lastOutcome = null;
+      let lastMatched = false;
+
+      // 그래프 성능을 위해 대량 시행 시 샘플링 간격 설정
+      const sampleStep = times >= 1000 ? 10 : (times >= 100 ? 2 : 1);
+
+      for (let t = 1; t <= times; t++) {
+        const outcome = [];
+        for (let c = 0; c < n; c++) {
+          outcome.push(Math.random() < 0.5 ? 'H' : 'T');
+        }
+        const matched = eventDef.predicate(outcome);
+
+        state.totalTrials++;
+        if (matched) state.eventCount++;
+
+        if (t % sampleStep === 0 || t === times) {
+          state.history.push({
+            trial: state.totalTrials,
+            relFreq: state.eventCount / state.totalTrials
+          });
+        }
+
+        if (t === times) {
+          lastOutcome = outcome;
+          lastMatched = matched;
+        }
+      }
+
+      // 히스토리 배열이 너무 길어지면 최대 600개 포인트로 압축 유지
+      if (state.history.length > 600) {
+        const compressed = [];
+        const step = Math.ceil(state.history.length / 500);
+        for (let i = 0; i < state.history.length; i += step) {
+          compressed.push(state.history[i]);
+        }
+        if (compressed[compressed.length - 1] !== state.history[state.history.length - 1]) {
+          compressed.push(state.history[state.history.length - 1]);
+        }
+        state.history = compressed;
+      }
+
+      state.lastCoins = lastOutcome;
+      renderCoins(times === 1);
+
+      // 마지막 결과 텍스트 및 배지 업데이트
+      const outcomeStr = '(' + lastOutcome.map(s => (s === 'H' ? '앞' : '뒤')).join(', ') + ')';
+      const badge = document.getElementById('lastOutcomeBadge');
+      const resultText = document.getElementById('tossResultText');
+
+      if (lastMatched) {
+        badge.textContent = '사건 발생! ⭕';
+        badge.className = 'text-xs font-extrabold px-3 py-1 rounded-full bg-amber-400 text-amber-950';
+        resultText.innerHTML = times === 1
+          ? `결과: <strong class="text-amber-300">${outcomeStr}</strong> → 선택한 사건이 일어났습니다!`
+          : `${times.toLocaleString()}번 시행 완료! 마지막 결과: <strong class="text-amber-300">${outcomeStr}</strong> (사건 발생)`;
+      } else {
+        badge.textContent = '사건 미발생 ❌';
+        badge.className = 'text-xs font-extrabold px-3 py-1 rounded-full bg-slate-700 text-slate-200';
+        resultText.innerHTML = times === 1
+          ? `결과: <strong class="text-slate-200">${outcomeStr}</strong> → 선택한 사건이 일어나지 않았습니다.`
+          : `${times.toLocaleString()}번 시행 완료! 마지막 결과: <strong class="text-slate-200">${outcomeStr}</strong> (미발생)`;
+      }
+
+      updateStatsUI();
+      drawConvergenceChart();
+    }
+
+    // --- 3D 동전 렌더링 ---
+    function renderCoins(animate) {
+      const container = document.getElementById('coinsContainer');
+      container.innerHTML = '';
+
+      state.lastCoins.forEach((side, idx) => {
+        const coinEl = document.createElement('div');
+        coinEl.className = 'coin';
+
+        if (animate) {
+          // 1번 던질 때만 회전 애니메이션 적용
+          coinEl.classList.add(side === 'H' ? 'animate-flip-front' : 'animate-flip-back');
+        } else {
+          coinEl.style.transform = side === 'H' ? 'rotateY(0deg)' : 'rotateY(180deg)';
+        }
+
+        coinEl.innerHTML = `
+          <div class="coin-face coin-front">
+            <span class="text-[11px] font-bold opacity-75">동전 ${idx + 1}</span>
+            <span class="font-title text-3xl sm:text-4xl">앞</span>
+          </div>
+          <div class="coin-face coin-back">
+            <span class="text-[11px] font-bold opacity-75">동전 ${idx + 1}</span>
+            <span class="font-title text-3xl sm:text-4xl">뒤</span>
+          </div>
+        `;
+        container.appendChild(coinEl);
+      });
+    }
+
+    // --- 통계 수치 및 수렴 상태 배지 업데이트 ---
+    function updateStatsUI() {
+      const N = state.totalTrials;
+      const r = state.eventCount;
+      const mathProb = state.favorableCount / state.sampleSpace.length;
+
+      document.getElementById('empEventCount').textContent = r.toLocaleString();
+      document.getElementById('empTotalTrials').textContent = N.toLocaleString();
+
+      const relFreqEl = document.getElementById('empRelFreqDecimal');
+      const diffEl = document.getElementById('empDiffText');
+      const statusBadge = document.getElementById('convergenceStatusBadge');
+
+      if (N === 0) {
+        relFreqEl.textContent = '0.0000';
+        diffEl.textContent = '수학적 확률과의 차이: -';
+        statusBadge.textContent = '동전을 던져보세요!';
+        statusBadge.className = 'text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full';
+      } else {
+        const relFreq = r / N;
+        const diff = Math.abs(relFreq - mathProb);
+        relFreqEl.textContent = relFreq.toFixed(4);
+        diffEl.textContent = `수학적 확률과의 차이: ${diff.toFixed(4)}`;
+
+        if (N < 30) {
+          statusBadge.textContent = '시행 횟수가 적어 아직 출렁입니다';
+          statusBadge.className = 'text-xs font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full';
+        } else if (diff <= 0.02) {
+          statusBadge.textContent = '✨ 수학적 확률에 매우 근접했습니다!';
+          statusBadge.className = 'text-xs font-extrabold text-white bg-emerald-600 px-2.5 py-0.5 rounded-full shadow-2xs';
+        } else {
+          statusBadge.textContent = '점점 수학적 확률로 다가가는 중...';
+          statusBadge.className = 'text-xs font-bold text-blue-700 bg-blue-100 px-2.5 py-0.5 rounded-full';
+        }
+      }
+    }
+
+    // --- HTML5 Canvas 실시간 수렴 꺾은선 그래프 그리기 ---
+    function drawConvergenceChart() {
+      const canvas = document.getElementById('convergenceChart');
+      const container = document.getElementById('chartContainer');
+      if (!canvas || !container) return;
+
+      // 고해상도(Retina) 디스플레이 대응
+      const dpr = window.devicePixelRatio || 1;
+      const rect = container.getBoundingClientRect();
+      const width = rect.width - 16; // padding 제외
+      const height = rect.height - 16;
+
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, width, height);
+
+      // 여백 설정
+      const padLeft = 48;
+      const padRight = 24;
+      const padTop = 20;
+      const padBottom = 34;
+
+      const plotW = width - padLeft - padRight;
+      const plotH = height - padTop - padBottom;
+
+      // Y축 눈금 및 가로 보조선 (0.0 ~ 1.0)
+      ctx.font = 'bold 11px "Noto Sans KR", sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+
+      const yTicks = [0, 0.25, 0.5, 0.75, 1.0];
+      yTicks.forEach(val => {
+        const y = padTop + plotH * (1 - val);
+
+        ctx.beginPath();
+        ctx.strokeStyle = val === 0 ? '#94a3b8' : '#e2e8f0';
+        ctx.lineWidth = val === 0 ? 1.5 : 1;
+        ctx.moveTo(padLeft, y);
+        ctx.lineTo(padLeft + plotW, y);
+        ctx.stroke();
+
+        ctx.fillStyle = '#64748b';
+        ctx.fillText(val.toFixed(2), padLeft - 8, y);
+      });
+
+      // Y축 세로선
+      ctx.beginPath();
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1.5;
+      ctx.moveTo(padLeft, padTop);
+      ctx.lineTo(padLeft, padTop + plotH);
+      ctx.stroke();
+
+      // 수학적 확률 기준선 (빨간 점선)
+      const mathProb = state.favorableCount / state.sampleSpace.length;
+      const targetY = padTop + plotH * (1 - mathProb);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.setLineDash([6, 5]);
+      ctx.strokeStyle = '#e11d48'; // rose-600
+      ctx.lineWidth = 2.2;
+      ctx.moveTo(padLeft, targetY);
+      ctx.lineTo(padLeft + plotW, targetY);
+      ctx.stroke();
+      ctx.restore();
+
+      // 기준선 우측 라벨 배지
+      const labelText = `수학적 확률 ${mathProb.toFixed(3)}`;
+      ctx.font = 'bold 11px "Noto Sans KR", sans-serif';
+      const textMetrics = ctx.measureText(labelText);
+      const badgeW = textMetrics.width + 12;
+      const badgeH = 20;
+      const badgeX = padLeft + plotW - badgeW - 4;
+      const badgeY = targetY > padTop + 26 ? targetY - badgeH - 4 : targetY + 4;
+
+      ctx.fillStyle = '#ffe4e6';
+      ctx.beginPath();
+      ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 6);
+      ctx.fill();
+
+      ctx.fillStyle = '#be123c';
+      ctx.textAlign = 'center';
+      ctx.fillText(labelText, badgeX + badgeW / 2, badgeY + badgeH / 2);
+
+      // 데이터가 없을 때 안내 문구
+      if (state.history.length === 0) {
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'bold 14px "Noto Sans KR", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('동전을 던지면 상대도수 변화 그래프가 여기에 그려집니다.', padLeft + plotW / 2, padTop + plotH / 2);
+        return;
+      }
+
+      // X축 눈금 표시
+      const maxTrial = Math.max(10, state.totalTrials);
+      ctx.fillStyle = '#64748b';
+      ctx.font = 'bold 11px "Noto Sans KR", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+
+      const xTickCount = 5;
+      for (let i = 0; i <= xTickCount; i++) {
+        const trialVal = Math.round((maxTrial / xTickCount) * i);
+        const x = padLeft + (plotW * i) / xTickCount;
+        ctx.fillText(`${trialVal.toLocaleString()}회`, x, padTop + plotH + 8);
+      }
+
+      // 상대도수 꺾은선 그래프 그리기
+      ctx.beginPath();
+      ctx.strokeStyle = '#2563eb'; // blue-600
+      ctx.lineWidth = 2.5;
+      ctx.lineJoin = 'round';
+
+      state.history.forEach((pt, idx) => {
+        const x = padLeft + (pt.trial / maxTrial) * plotW;
+        const y = padTop + plotH * (1 - pt.relFreq);
+        if (idx === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+      ctx.stroke();
+
+      // 마지막 지점 강조 점 찍기
+      const lastPt = state.history[state.history.length - 1];
+      const lastX = padLeft + (lastPt.trial / maxTrial) * plotW;
+      const lastY = padTop + plotH * (1 - lastPt.relFreq);
+
+      ctx.beginPath();
+      ctx.fillStyle = '#2563eb';
+      ctx.arc(lastX, lastY, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.arc(lastX, lastY, 5, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // 창 크기 변경 시 그래프 다시 그리기
+    window.addEventListener('resize', () => {
+      drawConvergenceChart();
+    });
+
+    // --- 초기 실행 ---
+    window.addEventListener('DOMContentLoaded', () => {
+      selectCoinCount(1);
+    });
+  </script>
+</body>
+</html>
